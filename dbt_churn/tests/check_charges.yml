@@ -1,0 +1,9 @@
+version: 2
+
+data_tests:
+  - name: check_charges
+    config:
+      severity: warn
+      warn_if: "> 0"
+      error_if: "> 1000"
+    description: "Check for unexpected values"
