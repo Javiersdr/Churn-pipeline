@@ -61,8 +61,8 @@ All services are managed with Docker Compose. You only need **Docker** and **Git
 
 2. **Build and start the services**
    ```bash
-   docker-compose build
-   docker-compose up -d
+   docker compose build
+   docker compose up -d
    ```
 
 3. **Access Airflow**
@@ -73,7 +73,7 @@ Open your browser and go to http://localhost:8080. Log in with ```admin```/```ad
 
 If you only want to work on dbt models interactively:
 ```bash
-docker-compose run --rm dbt
+docker compose run --rm dbt
 dbt seed && dbt run && dbt test
 ```
 All tests should pass, except a warning (see below).
