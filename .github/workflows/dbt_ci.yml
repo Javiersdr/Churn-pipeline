@@ -28,7 +28,10 @@ jobs:
       - name: Check dbt packages
         run: ls -la dbt_churn/dbt_packages
 
-      - name: Run dbt
+      - name: Load seed data
+        run: cd dbt_churn && dbt seed
+
+      - name: Run dbt models
         run: cd dbt_churn && dbt run
 
       - name: Run dbt tests
