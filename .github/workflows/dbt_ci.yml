@@ -1,0 +1,35 @@
+name: dbt CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  dbt-test:
+  # Since we are on github codespaces, we use ubuntu
+    runs-on: ubuntu-latest
+    steps:
+    # Recommended versions for checkout and setup
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install packages
+        run: dbt deps
+
+      - name: Check dbt packages
+        run: ls -la dbt_packages
+
+      - name: Run dbt
+        run: dbt run
+
+      - name: Run dbt tests
+        run: dbt test
