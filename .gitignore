@@ -1,4 +1,13 @@
-dbt_packages/
 target/
-logs/
+logs/*
+dbt_churn/logs
+dev.duckdb
 data/*.db
+.env
+.venv/
+venv/
+**/__pycache__/
+.DS_Store
+*.pyc
+target_dev/
+target_airflow/

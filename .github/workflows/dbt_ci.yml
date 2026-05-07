@@ -23,13 +23,13 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Install packages
-        run: dbt deps
+        run: cd dbt_churn && dbt deps
 
       - name: Check dbt packages
-        run: ls -la dbt_packages
+        run: ls -la dbt_churn/dbt_packages
 
       - name: Run dbt
-        run: dbt run
+        run: cd dbt_churn && dbt run
 
       - name: Run dbt tests
-        run: dbt test
+        run: cd dbt_churn && dbt test

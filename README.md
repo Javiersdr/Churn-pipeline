@@ -1,10 +1,19 @@
-This is a repository made to learn the tech stack of a data or analytics engineer in most companies by practicing and creating a small project that will be improved over time.
+# Telco Customer Churn – Modern Data Pipeline
 
-# What does it do?
+This is a personal project that simulates a real-world analytics engineering pipeline.  
+It takes raw customer data from the [Kaggle Telco Customer Churn](https://www.kaggle.com/datasets/blastchar/telco-customer-churn) dataset and transforms it into tested, documented, analysis-ready tables using a modern data stack.
 
-It is a self‑learning project to practice the modern data stack. I loaded the [Kaggle Telco Customer Churn](https://www.kaggle.com/datasets/blastchar/telco-customer-churn) dataset and transformed it into tested, documented analytics tables using Python 3.12, dbt 1.11 & dbt_utils, and SQLite3.
+I decided to build it as part of my transition from bioinformatics into data engineering, or more specifically, from academics to tech industry stack. This repository reflects some of the practices and tools I aim to work with daily: automated quality checks, reproducible environments, CI/CD, and orchestration.
 
-The whole environment was developed in GitHub Codespaces, but runs fine locally too
+## What it does
+
+- Ingests the raw CSV and loads it as a seed in dbt
+- Cleans, normalizes and enriches the data through three standard layers: staging → intermediate → marts
+- Applies 10 custom and generic tests to guarantee data quality
+- Orchestrates the pipeline daily with Apache Airflow
+- Runs automated CI on every push using GitHub Actions
+
+It is also containerized in docker to ensure full reproducibility.
 
 ---
 
@@ -12,13 +21,15 @@ The whole environment was developed in GitHub Codespaces, but runs fine locally 
 
 ```mermaid
 flowchart LR
-    CSV[CSV Seed] -->|dbt seed| SQLite[(SQLite)]
-    SQLite --> stg[stg_telco__customers]
-    stg --> int[int_churn_features]
-    int --> mart[fct_churn_analysis]
-    stg --> tests[Tests]
-    int --> tests
-    tests --> results[9 pass / 1 warn]
+    raw[Raw CSV] --> seed[dbt seed]
+    seed --> stg[Staging]
+    stg --> int[Intermediate]
+    int --> mart[Marts]
+    mart --> test[Data tests]
+
+    airflow[Airflow] -.->|schedules| seed
+    airflow -.->|runs| test
+    actions[GitHub Actions] -.->|triggers on push| test
 ```
 
 For this project, I have used the standard dbt modeling layers:
@@ -29,51 +40,84 @@ For this project, I have used the standard dbt modeling layers:
 
 ## Tech stack
 
-| **Area**        | **Tool**                                    |
-|:---------------:|:-------------------------------------------:|
-| Transformations | dbt Core, dbt_utils                         |
-| Database        | SQLite (file-based, portable)               |
-| Orchestration   | Python script (ready for Airflow migration) |
-| Environment     | GitHub Codespaces (cloud IDE, zero config)  |
-| Version control | Git & GitHub                                |
+| **Role**           | **Tool**                                    |
+|:------------------:|:-------------------------------------------:|
+| Transformation     | dbt-core 1.11 + dbt-duckdb                  |
+| Database           | DuckDB                                      |
+| Orchestration      | Apache Airflow 2.9                          |
+| CI/CD              | GitHub Actions                              |
+| Environment        | GitHub Codespaces / local                   |
+| Additional testing | pre-installed dbt-utils                     |
 
-## Usage
+## Quick Start
 
+All services are managed with Docker Compose. You only need **Docker** and **Git**.
+
+1. **Clone the repo**  
+   ```bash
+   git clone https://github.com/Javiersdr/Churn-pipeline.git
+   cd Churn-pipeline
+   ```
+
+2. **Build and start the services**
+   ```bash
+   docker-compose build
+   docker-compose up -d
+   ```
+
+3. **Access Airflow**
+
+Open your browser and go to http://localhost:8080. Log in with ```admin```/```admin```. Then, enable the __churn_pipeline__ DAG and trigger a manual run.
+
+## Development without Airflow
+
+If you only want to work on dbt models interactively:
 ```bash
-git clone https://github.com/Javiersdr/Churn-pipeline
-pip install -r requirements.txt
-cd Churn-pipeline/dbt_churn
-dbt deps
-cd ..
-python run_pipeline.py
+docker-compose run --rm dbt
+dbt seed && dbt run && dbt test
 ```
-> *Thanks to SQLite, the entire database lives in a single file. No server setup needed.*
+All tests should pass, except a warning (see below).
 
-## Testing strategy
+## Pipeline and tests explanation
 
-* **Generic tests**: ```unique, not_null, accepted_values, accepted_range```
-* **Singular tests**:
-    * ```check_phone_logic``` — No phone service cannot have multiple lines
-    * ```check_charges```— Here, the idea is: $$ \text{error} = \left| total\_charges - (tenure \times monthly\_charges) \right| \leq 100 $$. If the test fails on 25 rows or less, it shows a warning. If the number is higher, fail.
+### Inside the pipeline
+
+- **Staging (`stg_telco__customers`)** – renames columns, fixes data types, normalizes values.
+- **Intermediate (`int_churn_features`)** – join data, create relevant flags and creates `TotalCharges` column from `MonthlyCharges * tenure`.
+- **Marts (`fct_churn_analysis`)** – final table, ready for dashboards or machine learning.
+
+### Data quality
+
+The project includes **10 data tests**:
+
+- 8 generic tests (not_null, unique, accepted_values, accepted_range)
+- 2 custom tests:
+  - `check_phone_logic` – ensures phone‑related columns are consistent.
+  - `check_charges` – checks that `TotalCharges ≈ MonthlyCharges * tenure`.  
+    *Because some customers may have `TotalCharges IS NULL` (new customers), this test is configured to **warn** instead of failing.*
+
+## CI/CD with GitHub Actions
+
+A basic [GitHub Actions workflow](.github/workflows/dbt_ci.yml) runs **dbt run** and **dbt test** on every push to `main` 
+in order to make sure the pipeline never breaks without me knowing.
+
+![CI](https://github.com/Javiersdr/Churn-pipeline/actions/workflows/dbt_ci.yml/badge.svg)
 
 ## Future improvements
 
-### Airflow orchestration
+### Raw data availability
 
-Airflow is also widely used on the industry, so the python script will be replaced with a full DAG.
+Replace the CSV seed with a live database connection.
 
-### Docker
+### Data science
 
-Containerization of the entire stack.
+- Add a **predictive churn model** (ML) and serve it as a Streamlit dashboard.
+- Evolve the pipeline towards **MLOps** (model tracking, deployment).
 
 ### Cloud data warehouse
 
-Migration from SQLite to Snowflake/BigQuery to allow scalability.
-
-### CI/CD
-
-GitHub Actions to run ```dbt run``` and ```dbt test``` on every pull request.
+Migration from DuckDB to Snowflake/BigQuery to allow scalability.
 
 ### Advanced tests
 
-For complex data validation requirements and enhanced data quality.
+For complex data validation requirements and enhanced data quality. Maybe even dbt expectations.

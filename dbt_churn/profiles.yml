@@ -1,0 +1,7 @@
+telco_churn:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: dev.duckdb
+      schema: main
