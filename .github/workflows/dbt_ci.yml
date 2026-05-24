@@ -17,13 +17,17 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Make docker-compose available in CI
+        run: |
+          echo 'docker compose "$@"' > /usr/local/bin/docker-compose
+          chmod +x /usr/local/bin/docker-compose
+
       - name: Configure dlt credentials and dbt profile for CI
         run: |
           cp -r .dlt.example .dlt
-          # Override endpoint to localhost because MinIO runs directly on the runner
-          sed -i 's/endpoint_url = "http:\/\/minio:9000"/endpoint_url = "http:\/\/localhost:9000"/' .dlt/config.toml
+          # No cambiamos el endpoint, usa minio:9000 tal como está en .dlt.example
 
-          # Create a dbt profile for CI (MinIO on localhost)
+          # Crear un dbt profile para CI (MinIO en el servicio minio)
           mkdir -p dbt_churn/docker
           cat > dbt_churn/docker/profiles.yml << 'EOF'
           telco_churn:
@@ -37,7 +41,7 @@ jobs:
                   - httpfs
                 settings:
                   s3_region: us-east-1
-                  s3_endpoint: localhost:9000
+                  s3_endpoint: minio:9000
                   s3_url_style: path
                   s3_access_key_id: admin
                   s3_secret_access_key: password
@@ -46,6 +50,11 @@ jobs:
 
       - name: Build Docker images
         run: docker compose build
+
+      - name: Wait for MinIO to be healthy
+        run: |
+          docker compose up -d minio
+          timeout 60 bash -c 'while ! docker compose exec minio curl -f http://localhost:9000/minio/health/live; do sleep 2; done'
 
       - name: Run CI pipeline
         run: make ci-pipeline
