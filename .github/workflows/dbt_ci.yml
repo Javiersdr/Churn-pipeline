@@ -7,32 +7,45 @@ on:
     branches: [main]
 
 jobs:
-  dbt-test:
-  # Since we are on github codespaces, we use ubuntu
+  pipeline:
     runs-on: ubuntu-latest
+
     steps:
-    # Recommended versions for checkout and setup
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      - name: Configure dlt credentials and dbt profile for CI
+        run: |
+          cp -r .dlt.example .dlt
+          # Override endpoint to localhost because MinIO runs directly on the runner
+          sed -i 's/endpoint_url = "http:\/\/minio:9000"/endpoint_url = "http:\/\/localhost:9000"/' .dlt/config.toml
 
-      - name: Install packages
-        run: cd dbt_churn && dbt deps
+          # Create a dbt profile for CI (MinIO on localhost)
+          mkdir -p dbt_churn/docker
+          cat > dbt_churn/docker/profiles.yml << 'EOF'
+          telco_churn:
+            target: dev
+            outputs:
+              dev:
+                type: duckdb
+                path: ../data/churn_data.duckdb
+                schema: main
+                extensions:
+                  - httpfs
+                settings:
+                  s3_region: us-east-1
+                  s3_endpoint: localhost:9000
+                  s3_url_style: path
+                  s3_access_key_id: admin
+                  s3_secret_access_key: password
+                  s3_use_ssl: false
+          EOF
 
-      - name: Check dbt packages
-        run: ls -la dbt_churn/dbt_packages
+      - name: Build Docker images
+        run: docker compose build
 
-      - name: Load seed data
-        run: cd dbt_churn && dbt seed
-
-      - name: Run dbt models
-        run: cd dbt_churn && dbt run
-
-      - name: Run dbt tests
-        run: cd dbt_churn && dbt test
+      - name: Run CI pipeline
+        run: make ci-pipeline

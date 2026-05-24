@@ -29,10 +29,10 @@ models:
   - name: int_churn_features
     description: "Intermediate model with business logic and churn flag"
     columns:
-      - name: has_churned
+      - name: churn
         description: "Boolean flag indicating if customer churned"
         data_tests:
           - not_null
           - accepted_values:
               arguments:
-                values: [1, 0]
+                values: ['Yes', 'No']

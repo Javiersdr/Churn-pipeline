@@ -1,19 +1,10 @@
-# Telco Customer Churn – Modern Data Pipeline
+# Telco Customer Churn: An ML and Ecological analysis – Complete Data Pipeline
 
-This is a personal project that simulates a real-world analytics engineering pipeline.  
-It takes raw customer data from the [Kaggle Telco Customer Churn](https://www.kaggle.com/datasets/blastchar/telco-customer-churn) dataset and transforms it into tested, documented, analysis-ready tables using a modern data stack.
+[![CI](https://github.com/Javiersdr/Churn-pipeline/actions/workflows/dbt_ci.yml/badge.svg)](https://github.com/Javiersdr/Churn-pipeline/actions/workflows/dbt_ci.yml)
 
-I decided to build it as part of my transition from bioinformatics into data engineering, or more specifically, from academics to tech industry stack. This repository reflects some of the practices and tools I aim to work with daily: automated quality checks, reproducible environments, CI/CD, and orchestration.
+A full‑stack data project that transforms raw customer data into **actionable business insights** using a modern, cloud‑native stack. It covers the complete lifecycle: **ingestion, data warehouse, machine learning, interactive dashboard**, as well as CI/CD integration.
 
-## What it does
-
-- Ingests the raw CSV and loads it as a seed in dbt
-- Cleans, normalizes and enriches the data through three standard layers: staging → intermediate → marts
-- Applies 10 custom and generic tests to guarantee data quality
-- Orchestrates the pipeline daily with Apache Airflow
-- Runs automated CI on every push using GitHub Actions
-
-It is also containerized in docker to ensure full reproducibility.
+Built as part of my transition from bioinformatics to Data Engineering & Science, this repository demonstrates the practices I can bring to any data team: **reproducibility, testing, orchestration, and explainability**.
 
 ---
 
@@ -21,69 +12,98 @@ It is also containerized in docker to ensure full reproducibility.
 
 ```mermaid
 flowchart LR
-    raw[Raw CSV] --> seed[dbt seed]
-    seed --> stg[Staging]
-    stg --> int[Intermediate]
-    int --> mart[Marts]
-    mart --> test[Data tests]
-
-    airflow[Airflow] -.->|schedules| seed
-    airflow -.->|runs| test
-    actions[GitHub Actions] -.->|triggers on push| test
+   csv[Kaggle CSV] --> dlt[dlt]
+   dlt --> minio[MinIO<br/>Data Lake]
+   minio --> duckdb[DuckDB<br/>OLAP Engine]
+   duckdb --> dbt[dbt<br/>Transform & Test]
+   dbt --> rf[Random Forest + SHAP]
+   dbt --> leiden[Leiden + UMAP]
+   rf --> dashboard[Streamlit Dashboard]
+   leiden --> dashboard
+   airflow[Airflow] -.-> dlt
+   airflow -.-> dbt
+   airflow -.-> rf
+   airflow -.-> leiden
+   ci[GitHub Actions] -.-> dbt
 ```
 
-For this project, I have used the standard dbt modeling layers:
-
-* **Staging** — Rename, cast, clean. 1:1 with source.
-* **Intermediate** — Basic business logic, churn flagging, customer segmentation.
-* **Marts** — Aggregated tables ready for analysis or dashboards.
+* **dlt** ingests the raw CSV into MinIO (an S3‑compatible Data Lake).
+* **DuckDB** queries the Data Lake directly via httpfs.
+* **dbt** transforms, tests, and documents the data through staging → intermediate → marts standard layers.
+* A **Random Forest** classifier predicts individual churn risk and explains it with **SHAP**.
+* **Leiden community detection** reveals groups of customers with shared churn risk (co‑abandonment).
+* A **Streamlit dashboard** presents both individual predictions and community insights.
 
 ## Tech stack
 
-| **Role**           | **Tool**                                    |
-|:------------------:|:-------------------------------------------:|
-| Transformation     | dbt-core 1.11 + dbt-duckdb                  |
-| Database           | DuckDB                                      |
-| Orchestration      | Apache Airflow 2.9                          |
-| CI/CD              | GitHub Actions                              |
-| Environment        | GitHub Codespaces / local                   |
-| Additional testing | pre-installed dbt-utils                     |
+| **Role**                 | **Tool**                                    |
+|:------------------------:|:-------------------------------------------:|
+| Ingestion                | dlt (data load tool)                        |
+| Data Lake                | MinIO (S3‑compatible)                       |
+| Query Engine             | DuckDB                                      |
+| Transformation & Testing | 	dbt‑core + dbt‑duckdb + dbt‑utils          |
+| Orchestration            | Apache Airflow                              |
+| Supervised ML            | scikit‑learn (Random Forest), SHAP          |
+| Unsupervised ML          | leidenalg, igraph, UMAP, Plotly             |
+| Dashboard                | Streamlit                                   |
+| CI/CD                    | GitHub Actions                              |
+| Reproducibility          | Docker, Docker Compose, Makefile            |
 
 ## Quick Start
 
-All services are managed with Docker Compose. You only need **Docker** and **Git**.
+### Prerequisites
 
-1. **Clone the repo**  
-   ```bash
-   git clone https://github.com/Javiersdr/Churn-pipeline.git
-   cd Churn-pipeline
-   ```
+- Docker & Docker Compose
 
-2. **Build and start the services**
-   ```bash
-   docker compose build
-   docker compose up -d
-   ```
+- Git
 
-3. **Access Airflow**
+### Step by step
 
-Open your browser and go to http://localhost:8080. Log in with ```admin```/```admin```. Then, enable the __churn_pipeline__ DAG and trigger a manual run.
+1. **Clone and configure**
 
-## Development without Airflow
-
-If you only want to work on dbt models interactively:
 ```bash
-docker compose run --rm dbt
-dbt seed && dbt run && dbt test
+git clone https://github.com/Javiersdr/Churn-pipeline.git
+cd Churn-pipeline
+
+# Set up dlt credentials (local MinIO defaults)
+cp -r .dlt.example .dlt
+
+# Set up dbt profile (local MinIO defaults)
+cp dbt_churn/profiles.example.yml dbt_churn/profiles.yml
 ```
-All tests should pass, except a warning (see below).
+
+2. **Run the pipeline**
+
+```bash
+make pipeline
+```
+This single command will start all required services (MinIO, Airflow, Postgres, Dashboard) and then execute the full pipeline: ingestion, dbt transformations and tests, Random Forest model, network analysis.
+
+3. **Explore the results**
+
+| **Service**   | **URL**               | **Credentials**  |
+|:-------------:|:---------------------:|:----------------:|
+| Dashboard     | http://localhost:8501 | -                |
+| Airflow       | http://localhost:8080 | admin / admin    |
+| MinIO console | http://localhost:9001 | admin / password |
+
 
 ## Pipeline and tests explanation
 
-### Inside the pipeline
+### Ingestion
 
-- **Staging (`stg_telco__customers`)** – renames columns, fixes data types, normalizes values.
-- **Intermediate (`int_churn_features`)** – join data, create relevant flags and creates `TotalCharges` column from `MonthlyCharges * tenure`.
+The raw CSV is ingested with **dlt**, which:
+
+* Infers the schema automatically
+
+* Normalises column names to snake_case
+
+* Writes data as compressed JSONL files to MinIO `(s3://churn-data-lake/telco/)`
+
+* Provides atomic writes, incremental loading, and lineage metadata
+
+- **Staging (`stg_telco__customers`)** – Reads directly from MinIO, casts types, normalises values.
+- **Intermediate (`int_churn_features`)** – Business logic: churn flag, customer tenure segment, feature engineering and creates `TotalCharges` column from `MonthlyCharges * tenure`.
 - **Marts (`fct_churn_analysis`)** – final table, ready for dashboards or machine learning.
 
 ### Data quality
@@ -96,27 +116,70 @@ The project includes **10 data tests**:
   - `check_charges` – checks that `TotalCharges ≈ MonthlyCharges * tenure`.  
     *Because some customers may have `TotalCharges IS NULL` (new customers), this test is configured to **warn** instead of failing.*
 
+## Machine Learning
+
+### Supervised: Individual Churn Prediction
+
+* **Random Forest** with class balancing.
+* **SHAP** waterfall plots to explain each prediction.
+* Model and explainer exported for the dashboard.
+
+### Unsupervised: Co-abandonment Network
+
+* Customer similarity matrix into graph into **Leiden community detection**.
+* 6 communities discovered, two of them with a churn rate higher than 40%.
+* **Community Health Index** inspired by ecological resilience theory.
+* Direct comparison of highest vs lowest churn-risk communities.
+
+## Streamlit Dashboard
+
+Two interactive views:
+
+* **Individual prediction** -> Select a customer to calculate its churn probability + Shap waterfall plot.
+* **Community Analysis** -> Community summary, churn rates, CHI, interactive UMAP network, business insights.
+
+### Key finding
+
+The most resilient community consists almost entirely of customers without internet service, more specifically, basic phone plan users with long tenure and low bills. Their stability comes from simplicity. The most vulnerable community has internet (Fiber/DSL) but rejects add-on services, pays by electronic check, and has short tenure.
+
+This insight emerges only from the network analysis. A standalone classifier could miss this structural difference because it treats each customer independently, ignoring the community context.
+
+## Makefile commands
+
+The project includes a `Makefile` for common tasks. The most important one is:
+
+```bash
+make pipeline
+```
+
+It starts all necessary services (if they aren't running) and executes the entire pipeline.
+
+Other useful commands (which you can see anytime by typing `make help`):
+
+| **Command**   | **Description**                                                             |
+|:-------------:|:---------------------------------------------------------------------------:|
+| `make up`     | Start all services (MinIO, Airflow, Dashboard) without running the pipeline |
+| `make down`   | Stop all services                                                           |
+| `make test`   | Run only dbt data quality tests                                             |
+| `make clean`  | Remove generated files (logs, intermediate data, models)                    |
+| `make fclean` | Full clean: also removes Docker volumes                                     |
+
+The `dashboard` image contains all project dependencies (Python, dbt, DuckDB, etc.), so the pipeline steps reuse it.
+
 ## CI/CD with GitHub Actions
 
 A basic [GitHub Actions workflow](.github/workflows/dbt_ci.yml) runs **dbt run** and **dbt test** on every push to `main` 
-in order to make sure the pipeline never breaks without me knowing.
-
-![CI](https://github.com/Javiersdr/Churn-pipeline/actions/workflows/dbt_ci.yml/badge.svg)
+to ensure the pipeline never breaks without me knowing.
 
 ## Future improvements
 
-### Raw data availability
+### MLOps
 
-Replace the CSV seed with a live database connection.
+Track model versions, automate retraining.
 
-### Data science
+### CI/CD expansion
 
-- Add a **predictive churn model** (ML) and serve it as a Streamlit dashboard.
-- Evolve the pipeline towards **MLOps** (model tracking, deployment).
-
-### Cloud data warehouse
-
-Migration from DuckDB to Snowflake/BigQuery to allow scalability.
+Include model training & network analysis in GitHub Actions.
 
 ### Advanced tests
 

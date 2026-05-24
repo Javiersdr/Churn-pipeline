@@ -3,6 +3,8 @@ logs/*
 dbt_churn/logs
 dev.duckdb
 data/*.db
+data/churn_data.duckdb
+data/churn_data.duckdb.wal
 .env
 .venv/
 venv/
@@ -11,3 +13,6 @@ venv/
 *.pyc
 target_dev/
 target_airflow/
+dbt_churn/profiles.yml
+dbt_churn/.user.yml
+.dlt
