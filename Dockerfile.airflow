@@ -1,17 +1,12 @@
 FROM apache/airflow:2.9.0-python3.11
 
 USER root
-RUN apt-get update && apt-get install -y git
+RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
 
 USER airflow
 
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
-# If needed, force reinstall
-#RUN pip install --no-cache-dir --force-reinstall --upgrade -r /tmp/requirements.txt
-
-# If broken plugin, uncomment this:
-# RUN pip install setuptools
 
 # To copy my code
 COPY --chown=airflow:root . /opt/airflow/dbt_project

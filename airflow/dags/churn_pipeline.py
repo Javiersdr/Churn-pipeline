@@ -1,9 +1,11 @@
 # Based on the airflow documentation tutorials
+import sys
 from datetime import datetime, timedelta
-from airflow import DAG
+
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
-import sys
+
+from airflow import DAG
 
 sys.path.insert(0, '/opt/airflow/dbt_project')
 # Now I also import my own ingestion script
@@ -43,7 +45,7 @@ with DAG(
     catchup=False,
     tags=['churn', 'dbt', 'dlt'],
 ) as dag:
-    
+
 
     ingest_data = PythonOperator(
         task_id='dlt_ingest_to_minio',

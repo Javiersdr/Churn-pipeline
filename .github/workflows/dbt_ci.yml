@@ -17,6 +17,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Make docker-compose available in CI
         run: |
           echo 'docker compose "$@"' > /usr/local/bin/docker-compose
@@ -25,9 +30,8 @@ jobs:
       - name: Configure dlt credentials and dbt profile for CI
         run: |
           cp -r .dlt.example .dlt
-          # No cambiamos el endpoint, usa minio:9000 tal como está en .dlt.example
 
-          # Crear un dbt profile para CI (MinIO en el servicio minio)
+          # dbt profile for CI
           mkdir -p dbt_churn/docker
           cat > dbt_churn/docker/profiles.yml << 'EOF'
           telco_churn:
@@ -48,13 +52,30 @@ jobs:
                   s3_use_ssl: false
           EOF
 
+      - name: Create .env file for Docker Compose
+        run: |
+          cat > .env << EOF
+          MINIO_ROOT_USER=admin
+          MINIO_ROOT_PASSWORD=password
+          POSTGRES_USER=airflow
+          POSTGRES_PASSWORD=airflow
+          S3_ACCESS_KEY=admin
+          S3_SECRET_KEY=password
+          EOF
+
       - name: Build Docker images
         run: docker compose build
 
-      - name: Wait for MinIO to be healthy
+      - name: Wait for MinIO
         run: |
           docker compose up -d minio
           timeout 60 bash -c 'while ! docker compose exec minio curl -f http://localhost:9000/minio/health/live; do sleep 2; done'
 
       - name: Run CI pipeline
         run: make ci-pipeline
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Lint with ruff
+        run: ruff check .

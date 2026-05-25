@@ -1,0 +1,16 @@
+telco_churn:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: ../data/churn_data.duckdb
+      schema: main
+      extensions:
+        - httpfs
+      settings:
+        s3_region: us-east-1
+        s3_endpoint: minio:9000
+        s3_url_style: path
+        s3_access_key_id: admin
+        s3_secret_access_key: password
+        s3_use_ssl: false

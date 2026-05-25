@@ -6,20 +6,20 @@ Results are plotted and summarized for the dashboard.
 """
 
 import os
+
 import duckdb
-import pandas as pd
+import igraph as ig
+import leidenalg
+import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.preprocessing import StandardScaler, OneHotEncoder, MinMaxScaler
-from sklearn.compose import ColumnTransformer
+import pandas as pd
+import plotly.express as px
+import umap
 from scipy.sparse import csr_matrix
 from scipy.stats import entropy
-import matplotlib.pyplot as plt
-import plotly.express as px
-import json
-import leidenalg
-import igraph as ig
-import umap
+from sklearn.compose import ColumnTransformer
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 # Paths and configuration
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -39,7 +39,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 # Loading intermediate data because we need the complete information for this analysis
 con = duckdb.connect(DB_PATH)
 con.execute("INSTALL httpfs; LOAD httpfs;")
-con.execute(f"""
+con.execute("""
     SET s3_region='us-east-1';
     SET s3_endpoint='minio:9000';
     SET s3_url_style='path';

@@ -6,18 +6,19 @@ SHAP explainer for the Streamlit dashboard.
 """
 
 import os
+
 import duckdb
-import pandas as pd
-import numpy as np
+import joblib
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
+import numpy as np
+import pandas as pd
+import shap
 from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
-import joblib
-import shap
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 # Paths and configuration
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -36,7 +37,7 @@ os.makedirs(RESULTS_DIR, exist_ok=True)
 # Load data from the intermediate layer
 con = duckdb.connect(DB_PATH)
 con.execute("INSTALL httpfs; LOAD httpfs;")
-con.execute(f"""
+con.execute("""
     SET s3_region='us-east-1';
     SET s3_endpoint='minio:9000';
     SET s3_url_style='path';

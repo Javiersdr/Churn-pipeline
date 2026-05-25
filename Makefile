@@ -34,20 +34,20 @@ test: ## Run dbt data quality tests
 pipeline: up ## Run the full pipeline
 	@echo "$(GREEN)Starting ingestion...$(NC)"
 	docker compose run --rm dashboard python src/ingestion.py
+	docker-compose stop dashboard
 	@echo "$(GREEN)Running dbt...$(NC)"
-	docker compose run --rm dashboard sh -c "cd /app/dbt_churn && dbt run && dbt test && cd .."
+	docker compose run --rm dashboard sh -c "cd /app/dbt_churn && env DBT_PROFILES_DIR=/app/dbt_churn/docker dbt run && env DBT_PROFILES_DIR=/app/dbt_churn/docker dbt test && cd .."
+	docker-compose start dashboard
 	@echo "$(GREEN)Training Random Forest model...$(NC)"
 	docker compose run --rm dashboard python ML/RF_churn.py
 	@echo "$(GREEN)Running network analysis...$(NC)"
-	docker compose run --rm dashboard python ML/co-churn_network.py
+	docker compose run --rm dashboard python ML/co_churn_network.py
 	@echo "$(GREEN)Pipeline complete$(NC)"
 
 ci-pipeline: ## Run pipeline in CI (MinIO + execution container only)
 	docker compose up -d minio
 	docker compose run --rm dashboard python src/ingestion.py
 	docker compose run --rm dashboard sh -c "cd /app/dbt_churn && DBT_PROFILES_DIR=docker dbt run && DBT_PROFILES_DIR=docker dbt test"
-	docker compose run --rm dashboard python ML/RF_churn.py
-	docker compose run --rm dashboard python ML/co-churn_network.py
 	docker compose down
 	@echo "$(GREEN)✓ CI pipeline complete$(NC)"
 

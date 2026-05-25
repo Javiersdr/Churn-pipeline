@@ -1,6 +1,14 @@
 __pycache__
 *.pyc
 .git
+.env
+*.env
+.dlt
+*.md
+data/
+results_RF/
+results_network/
+models/
 .venv
 logs/
 dev.duckdb

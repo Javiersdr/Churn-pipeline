@@ -8,6 +8,15 @@ Built as part of my transition from bioinformatics to Data Engineering & Science
 
 ---
 
+## Preview
+
+| **Individual Prediction** | **Community Network** |
+|---|---|
+|![Individual](assets/individual_dashboard.png) | ![Network](assets/network_umap.png) |
+
+![Dashboard demo](assets/dashboard.gif)
+
+
 ## Architecture
 
 ```mermaid
@@ -64,6 +73,9 @@ flowchart LR
 ```bash
 git clone https://github.com/Javiersdr/Churn-pipeline.git
 cd Churn-pipeline
+
+# Set up env variables
+cp .env.example .env
 
 # Set up dlt credentials (local MinIO defaults)
 cp -r .dlt.example .dlt
@@ -168,8 +180,15 @@ The `dashboard` image contains all project dependencies (Python, dbt, DuckDB, et
 
 ## CI/CD with GitHub Actions
 
-A basic [GitHub Actions workflow](.github/workflows/dbt_ci.yml) runs **dbt run** and **dbt test** on every push to `main` 
-to ensure the pipeline never breaks without me knowing.
+On every push to `main`, a [GitHub Actions workflow](.github/workflows/dbt_ci.yml) runs the **full pipeline** inside a Docker‑based CI environment:
+
+1. Starts a MinIO container (S3‑compatible storage)
+2. Ingests the raw CSV with dlt
+3. Runs all dbt models and data quality tests
+4. Trains the Random Forest model
+5. Executes the co‑abandonment network analysis
+
+In addition, a **code quality** check (`ruff`) ensures that every Python file follows standard style rules.
 
 ## Future improvements
 

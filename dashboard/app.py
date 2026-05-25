@@ -1,13 +1,12 @@
-import os
-import sys
-import streamlit as st
-import numpy as np
-import pandas as pd
-import duckdb
-import matplotlib.pyplot as plt
 import json
-import shap
+import os
+
+import duckdb
 import joblib
+import matplotlib.pyplot as plt
+import pandas as pd
+import shap
+import streamlit as st
 
 # Paths
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -33,7 +32,7 @@ if view == "Individual Prediction":
         """Load customer-level data + model + explainer."""
         con = duckdb.connect(DB_PATH)
         con.execute("INSTALL httpfs; LOAD httpfs;")
-        con.execute(f"""
+        con.execute("""
             SET s3_region='us-east-1';
             SET s3_endpoint='minio:9000';
             SET s3_url_style='path';
@@ -198,7 +197,7 @@ elif view == "Community Analysis":
     explanation_path = os.path.join(RESULTS_NET, "explanation.md")
 
     if not os.path.exists(assignments_path):
-        st.error("Community assignments not found. Please run `co-churn_network.py` first.")
+        st.error("Community assignments not found. Please run `co_churn_network.py` first.")
     else:
         # First row
         row1_col1, row1_col2 = st.columns(2)
@@ -222,7 +221,7 @@ elif view == "Community Analysis":
                         churn_rate = merged.groupby("community")["churn"].mean()
                         comm_stats["churn_rate"] = comm_stats["community"].map(churn_rate)
                         st.dataframe(comm_stats.style.format({"churn_rate": "{:.1%}"}))
-                    except:
+                    except (duckdb.IOException, FileNotFoundError, pd.errors.DatabaseError):
                         st.dataframe(comm_stats)
 
         # 2. Community Charts (sub-grid 2x2)
