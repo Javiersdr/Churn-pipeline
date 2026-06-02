@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Churn Predictor</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .full { grid-column: span 2; }
+        label { display: block; margin-bottom: 2px; font-weight: bold; }
+        select, input { width: 100%; padding: 5px; }
+        button { padding: 10px 20px; font-size: 16px; background: #1f77b4; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px; }
+        #result { margin-top: 20px; }
+        ul { list-style-type: none; padding: 0; }
+        li { margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>Churn Prediction Demo</h1>
+    <form id="churn-form">
+        <div class="grid">
+            <div><label>Gender</label><select id="gender"><option>Male</option><option>Female</option></select></div>
+            <div><label>Senior Citizen</label><input type="number" id="senior_citizen" value="0" min="0" max="1"></div>
+            <div><label>Partner</label><select id="partner"><option>Yes</option><option>No</option></select></div>
+            <div><label>Dependents</label><select id="dependents"><option>Yes</option><option>No</option></select></div>
+            <div><label>Tenure (months)</label><input type="number" id="tenure" value="12" min="1"></div>
+            <div><label>Phone Service</label><select id="phone_service"><option>Yes</option><option>No</option></select></div>
+            <div><label>Multiple Lines</label><select id="multiple_lines"><option>No phone service</option><option>Yes</option><option>No</option></select></div>
+            <div><label>Internet Service</label><select id="internet_service"><option>DSL</option><option>Fiber optic</option><option>No</option></select></div>
+            <div><label>Online Security</label><select id="online_security"><option>No internet service</option><option>Yes</option><option>No</option></select></div>
+            <div><label>Online Backup</label><select id="online_backup"><option>No internet service</option><option>Yes</option><option>No</option></select></div>
+            <div><label>Device Protection</label><select id="device_protection"><option>No internet service</option><option>Yes</option><option>No</option></select></div>
+            <div><label>Tech Support</label><select id="tech_support"><option>No internet service</option><option>Yes</option><option>No</option></select></div>
+            <div><label>Streaming TV</label><select id="streaming_tv"><option>No internet service</option><option>Yes</option><option>No</option></select></div>
+            <div><label>Streaming Movies</label><select id="streaming_movies"><option>No internet service</option><option>Yes</option><option>No</option></select></div>
+            <div><label>Contract</label><select id="contract"><option>Month-to-month</option><option>One year</option><option>Two year</option></select></div>
+            <div><label>Paperless Billing</label><select id="paperless_billing"><option>Yes</option><option>No</option></select></div>
+            <div><label>Payment Method</label><select id="payment_method"><option>Electronic check</option><option>Mailed check</option><option>Bank transfer (automatic)</option><option>Credit card (automatic)</option></select></div>
+            <div><label>Monthly Charges</label><input type="number" step="10.00" id="monthly_charges" value="98.5" min="0"></div>
+            <div><label>Total Charges</label><input type="number" step="100.00" id="total_charges" value="834.3" min="0"></div>
+        </div>
+        <div class="full">
+            <label for="top_n">Number of top factors to show</label>
+            <input type="number" id="top_n" value="5" min="1" max="50" style="width:80px;">
+        </div>
+        <button type="button" onclick="predict()">Predict</button>
+    </form>
+
+    <div id="result">
+        <h2>Churn Probability: <span id="probability"></span></h2>
+        <div id="factors" style="margin-top:10px;"></div>
+    </div>
+
+    <script>
+    async function predict() {
+        const data = {
+            gender: document.getElementById("gender").value,
+            senior_citizen: parseInt(document.getElementById("senior_citizen").value),
+            partner: document.getElementById("partner").value,
+            dependents: document.getElementById("dependents").value,
+            tenure: parseInt(document.getElementById("tenure").value),
+            phone_service: document.getElementById("phone_service").value,
+            multiple_lines: document.getElementById("multiple_lines").value,
+            internet_service: document.getElementById("internet_service").value,
+            online_security: document.getElementById("online_security").value,
+            online_backup: document.getElementById("online_backup").value,
+            device_protection: document.getElementById("device_protection").value,
+            tech_support: document.getElementById("tech_support").value,
+            streaming_tv: document.getElementById("streaming_tv").value,
+            streaming_movies: document.getElementById("streaming_movies").value,
+            contract: document.getElementById("contract").value,
+            paperless_billing: document.getElementById("paperless_billing").value,
+            payment_method: document.getElementById("payment_method").value,
+            monthly_charges: parseFloat(document.getElementById("monthly_charges").value),
+            total_charges: parseFloat(document.getElementById("total_charges").value)
+        };
+        const resp = await fetch('/predict?explain=true&top_n=' + document.getElementById("top_n").value, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        const json = await resp.json();
+        document.getElementById("probability").innerText = (json.churn_probability * 100).toFixed(1) + '%';
+        const factorsDiv = document.getElementById("factors");
+        factorsDiv.innerHTML = '<h3>Top influencing factors (relative contribution)</h3>';
+        if (json.top_factors) {
+            let html = '<h3>Top influencing factors</h3><ul>';
+            json.top_factors.forEach(f => {
+                const sign = f.impact > 0 ? '+' : '';
+                html += `<li><strong>${f.feature}</strong>: ${sign}${f.impact.toFixed(1)}%</li>`;
+            });
+            html += '</ul>';
+            factorsDiv.innerHTML = html;
+        } else {
+            factorsDiv.innerHTML = '';
+        }
+    }
+    </script>
+</body>
+</html>

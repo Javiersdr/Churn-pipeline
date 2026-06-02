@@ -1,6 +1,6 @@
 # Telco Customer Churn: An ML and Ecological analysis – Complete Data Pipeline
 
-[![CI](https://github.com/Javiersdr/Churn-pipeline/actions/workflows/dbt_ci.yml/badge.svg)](https://github.com/Javiersdr/Churn-pipeline/actions/workflows/dbt_ci.yml)
+[![CI](https://github.com/Javiersdr/EcoChurnPipeline/actions/workflows/dbt_ci.yml/badge.svg)](https://github.com/Javiersdr/EcoChurnPipeline/actions/workflows/dbt_ci.yml)
 
 A full‑stack data project that transforms raw customer data into **actionable business insights** using a modern, cloud‑native stack. It covers the complete lifecycle: **ingestion, data warehouse, machine learning, interactive dashboard**, as well as CI/CD integration.
 
@@ -71,8 +71,8 @@ flowchart LR
 1. **Clone and configure**
 
 ```bash
-git clone https://github.com/Javiersdr/Churn-pipeline.git
-cd Churn-pipeline
+git clone https://github.com/Javiersdr/EcoChurnPipeline.git
+cd EcoChurnPipeline
 
 # Set up env variables
 cp .env.example .env
@@ -150,7 +150,36 @@ Two interactive views:
 * **Individual prediction** -> Select a customer to calculate its churn probability + Shap waterfall plot.
 * **Community Analysis** -> Community summary, churn rates, CHI, interactive UMAP network, business insights.
 
-### Key finding
+## Churn Prediction API
+
+A FastAPI service exposes the trained Random Forest model for real‑time predictions. It also returns **SHAP explanations**, showing which factors most influenced the risk score.
+
+**Endpoints**
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET`  | `/` | Landing page with links to the demo and docs |
+| `GET`  | `/health` | Health check (`{"status": "ok"}`) |
+| `POST` | `/predict` | Churn probability for a single customer |
+| `GET`  | `/form` | Interactive HTML form to test the model visually |
+
+**Quick start (local)**
+
+```bash
+uvicorn api:app --reload --port 8000
+```
+
+Then open `http://localhost:8000` to see the landing page that will lead you the rest of the endpoints.
+
+**Interactive demo**
+
+The built‑in form lets you fill in a customer’s details, choose how many top SHAP factors to display, and see the churn probability and the most influential features in one click. All fields are validated; illegal values are rejected before reaching the model thanks to Python's `Literal` type.
+
+**Explainability**
+
+When calling `/predict` with `?explain=true`, the response includes the probability, the base value, and the top N selected contributing features with their relative impact (in %). This is the same SHAP logic that powers the Streamlit dashboard, now available as a JSON API.
+
+## Key finding
 
 The most resilient community consists almost entirely of customers without internet service, more specifically, basic phone plan users with long tenure and low bills. Their stability comes from simplicity. The most vulnerable community has internet (Fiber/DSL) but rejects add-on services, pays by electronic check, and has short tenure.
 

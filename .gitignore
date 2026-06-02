@@ -15,4 +15,5 @@ target_dev/
 target_airflow/
 dbt_churn/profiles.yml
 dbt_churn/.user.yml
+dbt_churn/docker/.user.yml
 .dlt
